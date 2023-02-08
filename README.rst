@@ -1,7 +1,7 @@
 systeccan
 =========
 
-The ``ucan`` module is a Python wrapper based on the (c) SYSTEC electronic GmbH
+The ``systeccan`` module is a Python wrapper based on the (c) SYSTEC electronic GmbH
 USBcanServer wrapper class.
 
 Requires the driver package USB-CANmodul Utility Disk with the USBCAN32.DLL library to
@@ -14,7 +14,7 @@ Example
 -------
 .. code:: python
 
-    from ucan import *
+    from systeccan import *
 
     # create the USB CAN server
     can = USBCanServer()
