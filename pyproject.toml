@@ -7,6 +7,7 @@ name = "systeccan"
 version = "0.0.0"
 description = "SYSTEC CAN adapter driver wrapper"
 readme = "README.rst"
+requires-python = ">=3.2"
 classifiers = [
     "Intended Audience :: Developers",
     "Operating System :: Microsoft :: Windows",
