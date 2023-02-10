@@ -3,6 +3,8 @@
 from ctypes import Structure, WINFUNCTYPE, POINTER, WinDLL, byref, sizeof, c_ubyte
 from ctypes.wintypes import WORD, DWORD, BOOL, LPVOID, PWCHAR, PDWORD
 import logging
+import os
+import sys
 
 __author__ = "Daniel Igaz"
 __copyright__ = "Copyright 2018"
@@ -1144,30 +1146,46 @@ def check_result(result, func, arguments):
             raise USBCanError(result, func, arguments)
     return result
 
+# Give a friendly explanation for the assumption of Windows OS.
+assert os.name == "nt", "The Systec adapter driver only runs on Windows"
+
+# Select the proper .DLL for the platform.
+# see first note in https://docs.python.org/3.7/library/platform.html
+try:
+    if sys.maxsize > 2**32:
+        usbcan_dll = WinDLL("USBCAN64.dll")
+    else:
+        usbcan_dll = WinDLL("USBCAN32.dll")
+except OSError as e:
+    print(e, "\n")
+    sys.stderr.write("If you reach this error, try:\n"
+        "1) Install the proper 32/64-bit USB-to-CAN driver from https://www.systec-electronic.com/\n"
+        "2) Read https://stackoverflow.com/questions/57187566/python-ctypes-loading-dll-throws-oserror-winerror-193-1-is-not-a-valid-win\n")
+    sys.exit(-1)
 
 # BOOL PUBLIC UcanSetDebugMode (DWORD dwDbgLevel_p, _TCHAR* pszFilePathName_p, DWORD dwFlags_p);
-UcanSetDebugMode = WinDLL('usbcan32.dll').UcanSetDebugMode
+UcanSetDebugMode = usbcan_dll.UcanSetDebugMode
 UcanSetDebugMode.restype = BOOL
 UcanSetDebugMode.argtypes = [DWORD, PWCHAR, DWORD]
 
 # DWORD PUBLIC UcanGetVersionEx (VersionType VerType_p);
-UcanGetVersionEx = WinDLL('usbcan32.dll').UcanGetVersionEx
+UcanGetVersionEx = usbcan_dll.UcanGetVersionEx
 UcanGetVersionEx.restype = DWORD
 UcanGetVersionEx.argtypes = [VersionType]
 
 # DWORD PUBLIC UcanGetFwVersion (Handle UcanHandle_p);
-UcanGetFwVersion = WinDLL('usbcan32.dll').UcanGetFwVersion
+UcanGetFwVersion = usbcan_dll.UcanGetFwVersion
 UcanGetFwVersion.restype = DWORD
 UcanGetFwVersion.argtypes = [Handle]
 
 # BYTE PUBLIC UcanInitHwConnectControlEx (ConnectControlFktEx fpConnectControlFktEx_p, void* pCallbackArg_p);
-UcanInitHwConnectControlEx = WinDLL('usbcan32.dll').UcanInitHwConnectControlEx
+UcanInitHwConnectControlEx = usbcan_dll.UcanInitHwConnectControlEx
 UcanInitHwConnectControlEx.restype = ReturnCode
 UcanInitHwConnectControlEx.argtypes = [ConnectControlFktEx, LPVOID]
 UcanInitHwConnectControlEx.errcheck = check_result
 
 # BYTE PUBLIC UcanDeinitHwConnectControl (void)
-UcanDeinitHwConnectControl = WinDLL('usbcan32.dll').UcanDeinitHwConnectControl
+UcanDeinitHwConnectControl = usbcan_dll.UcanDeinitHwConnectControl
 UcanDeinitHwConnectControl.restype = ReturnCode
 UcanDeinitHwConnectControl.argtypes = []
 UcanDeinitHwConnectControl.errcheck = check_result
@@ -1177,26 +1195,26 @@ UcanDeinitHwConnectControl.errcheck = check_result
 #    BYTE  bDeviceNrLow_p,     BYTE  bDeviceNrHigh_p,
 #    DWORD dwSerialNrLow_p,    DWORD dwSerialNrHigh_p,
 #    DWORD dwProductCodeLow_p, DWORD dwProductCodeHigh_p);
-UcanEnumerateHardware = WinDLL('usbcan32.dll').UcanEnumerateHardware
+UcanEnumerateHardware = usbcan_dll.UcanEnumerateHardware
 UcanEnumerateHardware.restype = DWORD
 UcanEnumerateHardware.argtypes = [EnumCallback, LPVOID, BOOL, BYTE, BYTE, DWORD, DWORD, DWORD, DWORD]
 
 # BYTE PUBLIC UcanInitHardwareEx (Handle* pUcanHandle_p, BYTE bDeviceNr_p,
 #   CallbackFktEx fpCallbackFktEx_p, void* pCallbackArg_p);
-UcanInitHardwareEx = WinDLL('usbcan32.dll').UcanInitHardwareEx
+UcanInitHardwareEx = usbcan_dll.UcanInitHardwareEx
 UcanInitHardwareEx.restype = ReturnCode
 UcanInitHardwareEx.argtypes = [POINTER(Handle), BYTE, CallbackFktEx, LPVOID]
 UcanInitHardwareEx.errcheck = check_result
 
 # BYTE PUBLIC UcanInitHardwareEx2 (Handle* pUcanHandle_p, DWORD dwSerialNr_p,
 #   CallbackFktEx fpCallbackFktEx_p, void* pCallbackArg_p);
-UcanInitHardwareEx2 = WinDLL('usbcan32.dll').UcanInitHardwareEx2
+UcanInitHardwareEx2 = usbcan_dll.UcanInitHardwareEx2
 UcanInitHardwareEx2.restype = ReturnCode
 UcanInitHardwareEx2.argtypes = [POINTER(Handle), DWORD, CallbackFktEx, LPVOID]
 UcanInitHardwareEx2.errcheck = check_result
 
 # BYTE PUBLIC UcanGetModuleTime (Handle UcanHandle_p, DWORD* pdwTime_p);
-UcanGetModuleTime = WinDLL('usbcan32.dll').UcanGetModuleTime
+UcanGetModuleTime = usbcan_dll.UcanGetModuleTime
 UcanGetModuleTime.restype = ReturnCode
 UcanGetModuleTime.argtypes = [Handle, PDWORD]
 UcanGetModuleTime.errcheck = check_result
@@ -1204,115 +1222,115 @@ UcanGetModuleTime.errcheck = check_result
 # BYTE PUBLIC UcanGetHardwareInfoEx2 (Handle UcanHandle_p,
 #   HardwareInfoEx* pHwInfo_p,
 #   ChannelInfo* pCanInfoCh0_p, ChannelInfo* pCanInfoCh1_p);
-UcanGetHardwareInfoEx2 = WinDLL('usbcan32.dll').UcanGetHardwareInfoEx2
+UcanGetHardwareInfoEx2 = usbcan_dll.UcanGetHardwareInfoEx2
 UcanGetHardwareInfoEx2.restype = ReturnCode
 UcanGetHardwareInfoEx2.argtypes = [Handle, POINTER(HardwareInfoEx), POINTER(ChannelInfo),
                                    POINTER(ChannelInfo)]
 UcanGetHardwareInfoEx2.errcheck = check_result
 
 # BYTE PUBLIC UcanInitCanEx2 (Handle UcanHandle_p, BYTE bChannel_p, tUcaninit_canParam* pinit_canParam_p);
-UcanInitCanEx2 = WinDLL('usbcan32.dll').UcanInitCanEx2
+UcanInitCanEx2 = usbcan_dll.UcanInitCanEx2
 UcanInitCanEx2.restype = ReturnCode
 UcanInitCanEx2.argtypes = [Handle, BYTE, POINTER(InitCanParam)]
 UcanInitCanEx2.errcheck = check_result
 
 # BYTE PUBLIC UcanSetBaudrateEx (Handle UcanHandle_p,
 #   BYTE bChannel_p, BYTE bBTR0_p, BYTE bBTR1_p, DWORD dwBaudrate_p);
-UcanSetBaudrateEx = WinDLL('usbcan32.dll').UcanSetBaudrateEx
+UcanSetBaudrateEx = usbcan_dll.UcanSetBaudrateEx
 UcanSetBaudrateEx.restype = ReturnCode
 UcanSetBaudrateEx.argtypes = [Handle, BYTE, BYTE, BYTE, DWORD]
 UcanSetBaudrateEx.errcheck = check_result
 
 # BYTE PUBLIC UcanSetAcceptanceEx (Handle UcanHandle_p, BYTE bChannel_p,
 #   DWORD dwAMR_p, DWORD dwACR_p);
-UcanSetAcceptanceEx = WinDLL('usbcan32.dll').UcanSetAcceptanceEx
+UcanSetAcceptanceEx = usbcan_dll.UcanSetAcceptanceEx
 UcanSetAcceptanceEx.restype = ReturnCode
 UcanSetAcceptanceEx.argtypes = [Handle, BYTE, DWORD, DWORD]
 UcanSetAcceptanceEx.errcheck = check_result
 
 # BYTE PUBLIC UcanResetCanEx (Handle UcanHandle_p, BYTE bChannel_p, DWORD dwResetFlags_p);
-UcanResetCanEx = WinDLL('usbcan32.dll').UcanResetCanEx
+UcanResetCanEx = usbcan_dll.UcanResetCanEx
 UcanResetCanEx.restype = ReturnCode
 UcanResetCanEx.argtypes = [Handle, BYTE, DWORD]
 UcanResetCanEx.errcheck = check_result
 
 # BYTE PUBLIC UcanReadCanMsgEx (Handle UcanHandle_p, BYTE* pbChannel_p,
 #   CanMsg* pCanMsg_p, DWORD* pdwCount_p);
-UcanReadCanMsgEx = WinDLL('usbcan32.dll').UcanReadCanMsgEx
+UcanReadCanMsgEx = usbcan_dll.UcanReadCanMsgEx
 UcanReadCanMsgEx.restype = ReturnCode
 UcanReadCanMsgEx.argtypes = [Handle, PBYTE, POINTER(CanMsg), PDWORD]
 UcanReadCanMsgEx.errcheck = check_result
 
 # BYTE PUBLIC UcanWriteCanMsgEx (Handle UcanHandle_p, BYTE bChannel_p,
 #   CanMsg* pCanMsg_p, DWORD* pdwCount_p);
-UcanWriteCanMsgEx = WinDLL('usbcan32.dll').UcanWriteCanMsgEx
+UcanWriteCanMsgEx = usbcan_dll.UcanWriteCanMsgEx
 UcanWriteCanMsgEx.restype = ReturnCode
 UcanWriteCanMsgEx.argtypes = [Handle, BYTE, POINTER(CanMsg), PDWORD]
 UcanWriteCanMsgEx.errcheck = check_result
 
 # BYTE PUBLIC UcanGetStatusEx (Handle UcanHandle_p, BYTE bChannel_p, Status* pStatus_p);
-UcanGetStatusEx = WinDLL('usbcan32.dll').UcanGetStatusEx
+UcanGetStatusEx = usbcan_dll.UcanGetStatusEx
 UcanGetStatusEx.restype = ReturnCode
 UcanGetStatusEx.argtypes = [Handle, BYTE, POINTER(Status)]
 UcanGetStatusEx.errcheck = check_result
 
 # BYTE PUBLIC UcanGetMsgCountInfoEx (Handle UcanHandle_p, BYTE bChannel_p,
 #   MsgCountInfo* pMsgCountInfo_p);
-UcanGetMsgCountInfoEx = WinDLL('usbcan32.dll').UcanGetMsgCountInfoEx
+UcanGetMsgCountInfoEx = usbcan_dll.UcanGetMsgCountInfoEx
 UcanGetMsgCountInfoEx.restype = ReturnCode
 UcanGetMsgCountInfoEx.argtypes = [Handle, BYTE, POINTER(MsgCountInfo)]
 UcanGetMsgCountInfoEx.errcheck = check_result
 
 # BYTE PUBLIC UcanGetMsgPending (Handle UcanHandle_p,
 #   BYTE bChannel_p, DWORD dwFlags_p, DWORD* pdwPendingCount_p);
-UcanGetMsgPending = WinDLL('usbcan32.dll').UcanGetMsgPending
+UcanGetMsgPending = usbcan_dll.UcanGetMsgPending
 UcanGetMsgPending.restype = ReturnCode
 UcanGetMsgPending.argtypes = [Handle, BYTE, DWORD, PDWORD]
 UcanGetMsgPending.errcheck = check_result
 
 # BYTE PUBLIC UcanGetCanErrorCounter (Handle UcanHandle_p,
 #   BYTE bChannel_p, DWORD* pdwTxErrorCounter_p, DWORD* pdwRxErrorCounter_p);
-UcanGetCanErrorCounter = WinDLL('usbcan32.dll').UcanGetCanErrorCounter
+UcanGetCanErrorCounter = usbcan_dll.UcanGetCanErrorCounter
 UcanGetCanErrorCounter.restype = ReturnCode
 UcanGetCanErrorCounter.argtypes = [Handle, BYTE, PDWORD, PDWORD]
 UcanGetCanErrorCounter.errcheck = check_result
 
 # BYTE PUBLIC UcanSetTxTimeout (Handle UcanHandle_p,
 #   BYTE bChannel_p, DWORD dwTxTimeout_p);
-UcanSetTxTimeout = WinDLL('usbcan32.dll').UcanSetTxTimeout
+UcanSetTxTimeout = usbcan_dll.UcanSetTxTimeout
 UcanSetTxTimeout.restype = ReturnCode
 UcanSetTxTimeout.argtypes = [Handle, BYTE, DWORD]
 UcanSetTxTimeout.errcheck = check_result
 
 # BYTE PUBLIC UcanDeinitCanEx (Handle UcanHandle_p, BYTE bChannel_p);
-UcanDeinitCanEx = WinDLL('usbcan32.dll').UcanDeinitCanEx
+UcanDeinitCanEx = usbcan_dll.UcanDeinitCanEx
 UcanDeinitCanEx.restype = ReturnCode
 UcanDeinitCanEx.argtypes = [Handle, BYTE]
 UcanDeinitCanEx.errcheck = check_result
 
 # BYTE PUBLIC UcanDeinitHardware (Handle UcanHandle_p);
-UcanDeinitHardware = WinDLL('usbcan32.dll').UcanDeinitHardware
+UcanDeinitHardware = usbcan_dll.UcanDeinitHardware
 UcanDeinitHardware.restype = ReturnCode
 UcanDeinitHardware.argtypes = [Handle]
 UcanDeinitHardware.errcheck = check_result
 
 # BYTE PUBLIC UcanDefineCyclicCanMsg (Handle UcanHandle_p,
 #   BYTE bChannel_p, CanMsg* pCanMsgList_p, DWORD dwCount_p);
-UcanDefineCyclicCanMsg = WinDLL('usbcan32.dll').UcanDefineCyclicCanMsg
+UcanDefineCyclicCanMsg = usbcan_dll.UcanDefineCyclicCanMsg
 UcanDefineCyclicCanMsg.restype = ReturnCode
 UcanDefineCyclicCanMsg.argtypes = [Handle, BYTE, POINTER(CanMsg), DWORD]
 UcanDefineCyclicCanMsg.errcheck = check_result
 
 # BYTE PUBLIC UcanReadCyclicCanMsg (Handle UcanHandle_p,
 #   BYTE bChannel_p, CanMsg* pCanMsgList_p, DWORD* pdwCount_p);
-UcanReadCyclicCanMsg = WinDLL('usbcan32.dll').UcanReadCyclicCanMsg
+UcanReadCyclicCanMsg = usbcan_dll.UcanReadCyclicCanMsg
 UcanReadCyclicCanMsg.restype = ReturnCode
 UcanReadCyclicCanMsg.argtypes = [Handle, BYTE, POINTER(CanMsg), PDWORD]
 UcanReadCyclicCanMsg.errcheck = check_result
 
 # BYTE PUBLIC UcanEnableCyclicCanMsg (Handle UcanHandle_p,
 #   BYTE bChannel_p, DWORD dwFlags_p);
-UcanEnableCyclicCanMsg = WinDLL('usbcan32.dll').UcanEnableCyclicCanMsg
+UcanEnableCyclicCanMsg = usbcan_dll.UcanEnableCyclicCanMsg
 UcanEnableCyclicCanMsg.restype = ReturnCode
 UcanEnableCyclicCanMsg.argtypes = [Handle, BYTE, DWORD]
 UcanEnableCyclicCanMsg.errcheck = check_result
@@ -1390,7 +1408,7 @@ class USBCanServer:
         Initializes the device with the corresponding serial or device number.
 
         :param int or None serial: Serial number of the USB-CANmodul.
-        :param int device_number: Device number (0 – 254, or :const:`ANY_MODULE` for the first device).
+        :param int device_number: Device number (0 - 254, or :const:`ANY_MODULE` for the first device).
         """
         if not self._hw_is_initialized:
             # initialize hardware either by device number or serial
@@ -1405,7 +1423,7 @@ class USBCanServer:
                  rx_buffer_entries=DEFAULT_BUFFER_ENTRIES, tx_buffer_entries=DEFAULT_BUFFER_ENTRIES):
         """
         Initializes a specific CAN channel of a device.
-        
+
         :param int channel: CAN channel to be initialized (:data:`Channel.CHANNEL_CH0` or :data:`Channel.CHANNEL_CH1`).
         :param int BTR:
             Baud rate register BTR0 as high byte, baud rate register BTR1 as low byte (see enum :class:`Baudrate`).
